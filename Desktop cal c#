@@ -1,0 +1,178 @@
+using CalculatorLogic;
+
+namespace DesktopCalculator
+{
+    public partial class CalculatorForm : Form
+    {
+        private Calculator calculator = new Calculator();
+
+        decimal resultValue = 0;
+        string operationPerformed = "";
+        bool isOperationPerformed = false;
+
+        public CalculatorForm()
+        {
+            InitializeComponent();
+        }
+
+        private void EqualsButton_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                displayedResult.Text = calculator.PerformOperation(resultValue, operationPerformed, displayedResult.Text).ToString("#.###");
+                resultValue = decimal.Parse(displayedResult.Text);
+                currentOperationText.Text = "";
+                displayedResult.Focus();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error: " + ex.Message);
+                displayedResult.Text = "0";
+            }
+
+            currentOperationText.Text = displayedResult.Text + " " + button_Equals.Text;
+            resultValue = decimal.Parse(displayedResult.Text);
+            currentOperationText.Text = "";
+
+            if (operationPerformed == "")
+            {
+                resultValue = 0;
+            }
+            isOperationPerformed = true;
+        }
+
+        private void InputNumber_Click(object sender, EventArgs e)
+        {
+            Button button = (Button)sender;
+
+            if ((displayedResult.Text == "0") || isOperationPerformed)
+                displayedResult.Clear();
+
+            isOperationPerformed = false;
+
+            if (button.Text == "." && !displayedResult.Text.Contains("."))
+            {
+                displayedResult.Text += button.Text;
+            }
+            else if (button.Text != ".")
+            {
+                displayedResult.Text += button.Text;
+            }
+
+            if (resultValue != 0)
+            {
+                currentOperationText.Text = resultValue + " " + operationPerformed + displayedResult.Text;
+            }
+            else
+            {
+                currentOperationText.Text = operationPerformed + displayedResult.Text;
+            }
+        }
+
+        private void Operation_Click(object sender, EventArgs e)
+        {
+            Button button = (Button)sender;
+
+            if (resultValue != 0)
+            {
+                button_Equals.PerformClick();
+                operationPerformed = button.Text;
+                currentOperationText.Text = resultValue + " " + operationPerformed;
+                isOperationPerformed = true;
+            }
+            else
+            {
+                operationPerformed = button.Text;
+                if (!string.IsNullOrEmpty(displayedResult.Text))
+                {
+                    try
+                    {
+                        resultValue = decimal.Parse(displayedResult.Text);
+                        isOperationPerformed = true;
+                        currentOperationText.Text = resultValue + " " + operationPerformed;
+                    }
+                    catch (FormatException ex)
+                    {
+                        MessageBox.Show("Input string is not in the correct format.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        displayedResult.Text = "0";
+                    }
+                }
+            }
+        }
+
+        private void ClearEntry_Click(object sender, EventArgs e)
+        {
+            displayedResult.Text = calculator.ClearEntry(displayedResult.Text);
+            isOperationPerformed = false;
+            currentOperationText.Text = displayedResult.Text;
+        }
+
+        private void Clear_Click(object sender, EventArgs e)
+        {
+            resultValue = calculator.Clear(resultValue);
+            displayedResult.Text = calculator.ClearEntry(displayedResult.Text);
+            operationPerformed = "";
+            isOperationPerformed = false;
+            currentOperationText.Text = displayedResult.Text;
+        }
+
+        private void displayedResult_Validated(object sender, EventArgs e)
+        {
+            if (!displayedResult.Text.Contains(" "))
+            {
+                displayedResult.Clear();
+                resultValue = 0;
+            }
+        }
+    }
+}
+
+namespace CalculatorLogic
+{
+    public class Calculator
+    {
+        public decimal PerformOperation(decimal resultValue, string operation, string inputValue)
+        {
+            decimal input;
+            decimal result = 0;
+            if (!decimal.TryParse(inputValue, out input))
+            {
+                throw new FormatException("Invalid input.");
+            }
+
+            switch (operation)
+            {
+                case "+":
+                    result = resultValue + input;
+                    break;
+                case "-":
+                    result = resultValue - input;
+                    break;
+                case "*":
+                    result = resultValue * input;
+                    break;
+                case "/":
+                    if (input != 0)
+                        result = resultValue / input;
+                    else
+                    {
+                        throw new DivideByZeroException("Cannot divide by zero.");
+                    }
+                    break;
+                default:
+                    throw new InvalidOperationException("Invalid operation.");
+            }
+            return Math.Round(result, 3);
+        }
+
+        public string ClearEntry(string currentValue)
+        {
+            return "0";
+        }
+
+        public decimal Clear(decimal resultValue)
+        {
+            return 0;
+        }
+    }
+}
