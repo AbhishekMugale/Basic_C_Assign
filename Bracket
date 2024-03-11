@@ -1,1 +1,90 @@
-b
+
+using System;
+
+namespace CalculatorLogic
+{
+    public class Calculator
+    {
+        public decimal PerformOperation(decimal resultValue, string operation, string inputValue)
+        {
+            decimal input;
+            decimal result = 0;
+            if (!decimal.TryParse(inputValue, out input))
+            {
+                throw new FormatException("Invalid input.");
+            }
+
+            if (operation == "")
+            {
+                result = input;
+            }
+            else
+            {
+                result = resultValue;
+                char currentOp = '+';
+                int i = 0;
+                while (i < operation.Length)
+                {
+                    char c = operation[i];
+                    if (c == '+' || c == '-' || c == '*' || c == '/')
+                    {
+                        currentOp = c;
+                    }
+                    else if (c == '(')
+                    {
+                        int bracketCount = 1;
+                        int j = i + 1;
+                        while (bracketCount > 0 && j < operation.Length)
+                        {
+                            if (operation[j] == '(')
+                                bracketCount++;
+                            else if (operation[j] == ')')
+                                bracketCount--;
+                            j++;
+                        }
+                        string subExpr = operation.Substring(i + 1, j - i - 2);
+                        result = PerformOperation(result, currentOp.ToString(), subExpr);
+                        i = j - 1;
+                    }
+                    else if (char.IsDigit(c))
+                    {
+                        string numStr = c.ToString();
+                        int j = i + 1;
+                        while (j < operation.Length && char.IsDigit(operation[j]))
+                        {
+                            numStr += operation[j];
+                            j++;
+                        }
+                        decimal num = decimal.Parse(numStr);
+                        if (currentOp == '+')
+                            result += num;
+                        else if (currentOp == '-')
+                            result -= num;
+                        else if (currentOp == '*')
+                            result *= num;
+                        else if (currentOp == '/')
+                        {
+                            if (num == 0)
+                                throw new DivideByZeroException("Cannot divide by zero.");
+                            result /= num;
+                        }
+                        i = j - 1;
+                    }
+                    i++;
+                }
+            }
+
+            return Math.Round(result, 3);
+        }
+
+        public string ClearEntry(string currentValue)
+        {
+            return "0";
+        }
+
+        public decimal Clear(decimal resultValue)
+        {
+            return 0;
+        }
+    }
+}
