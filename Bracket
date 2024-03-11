@@ -1,4 +1,156 @@
+using CalculatorLogic;
 using System;
+using System.Collections.Generic;
+using System.Text;
+using System.Windows.Forms;
+
+namespace DesktopCalculator
+{
+    public partial class Form1 : Form
+    {
+        private Calculator calculator = new Calculator();
+
+        decimal resultValue = 0;
+        string operationPerform = "";
+        bool isOperationPerform = false;
+
+        public Form1()
+        {
+            InitializeComponent();
+        }
+
+        private void EqualsTo_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                textBox_Result.Text = calculator.PerformOperation(resultValue, operationPerform, textBox_Result.Text).ToString("#.###");
+                resultValue = decimal.Parse(textBox_Result.Text);
+                labelCurrentOperation.Text = "";
+                textBox_Result.Focus();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error: " + ex.Message);
+                textBox_Result.Text = "0";
+            }
+
+            labelCurrentOperation.Text = textBox_Result.Text + " " + buttonEquals.Text;
+            resultValue = decimal.Parse(textBox_Result.Text);
+            labelCurrentOperation.Text = "";
+
+            if (operationPerform == "")
+            {
+                resultValue = 0;
+            }
+            isOperationPerform = true;
+        }
+
+        private void InputNumber_Click(object sender, EventArgs e)
+        {
+            Button button = (Button)sender;
+
+            if ((textBox_Result.Text == "0") || isOperationPerform)
+                textBox_Result.Clear();
+
+            isOperationPerform = false;
+
+            if (button.Text == ".")
+            {
+                if (!textBox_Result.Text.Contains("."))
+                {
+                    textBox_Result.Text += button.Text;
+                }
+                else
+                {
+                    MessageBox.Show("Decimal point already exists.");
+                }
+            }
+            else if (button.Text != ".")
+            {
+                textBox_Result.Text += button.Text;
+            }
+
+            if (resultValue != 0)
+            {
+                labelCurrentOperation.Text = resultValue + " " + operationPerform + textBox_Result.Text;
+            }
+            else
+            {
+                labelCurrentOperation.Text = operationPerform + textBox_Result.Text;
+            }
+
+            if (textBox_Result.Text.Contains("("))
+            {
+                // Handle parentheses logic
+                try
+                {
+                    string postfixExpression = calculator.ConvertToPostfix(textBox_Result.Text);
+                    labelPostfixExpression.Text = postfixExpression;
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Error: " + ex.Message);
+                }
+            }
+        }
+
+        private void Operation_Click(object sender, EventArgs e)
+        {
+            Button button = (Button)sender;
+
+            if (resultValue != 0)
+            {
+                buttonEquals.PerformClick();
+                operationPerform = button.Text;
+                labelCurrentOperation.Text = resultValue + " " + operationPerform;
+                isOperationPerform = true;
+            }
+            else
+            {
+                operationPerform = button.Text;
+                if (!string.IsNullOrEmpty(textBox_Result.Text))
+                {
+                    try
+                    {
+                        resultValue = decimal.Parse(textBox_Result.Text);
+                        isOperationPerform = true;
+                        labelCurrentOperation.Text = resultValue + " " + operationPerform;
+                    }
+                    catch (FormatException ex)
+                    {
+                        MessageBox.Show("Input string is not in the correct format.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        textBox_Result.Text = "0";
+                    }
+                }
+            }
+        }
+
+        private void ClearEntry_Click(object sender, EventArgs e)
+        {
+            textBox_Result.Text = calculator.ClearEntry(textBox_Result.Text);
+            isOperationPerform = false;
+            labelCurrentOperation.Text = textBox_Result.Text;
+        }
+
+        private void Clear_Click(object sender, EventArgs e)
+        {
+            resultValue = calculator.Clear(resultValue);
+            textBox_Result.Text = calculator.ClearEntry(textBox_Result.Text);
+            operationPerform = "";
+            isOperationPerform = false;
+            labelCurrentOperation.Text = textBox_Result.Text;
+        }
+
+        private void textBox_Result_Validated(object sender, EventArgs e)
+        {
+            if (!textBox_Result.Text.Contains(" "))
+            {
+                textBox_Result.Clear();
+                resultValue = 0;
+            }
+        }
+    }
+}
 
 namespace CalculatorLogic
 {
@@ -13,101 +165,29 @@ namespace CalculatorLogic
                 throw new FormatException("Invalid input.");
             }
 
-            if (operation == "")
+            switch (operation)
             {
-                result = input;
+                case "+":
+                    result = resultValue + input;
+                    break;
+                case "-":
+                    result = resultValue - input;
+                    break;
+                case "*":
+                    result = resultValue * input;
+                    break;
+                case "/":
+                    if (input != 0)
+                        result = resultValue / input;
+                    else
+                    {
+                        throw new DivideByZeroException("Cannot divide by zero.");
+                    }
+                    break;
+                default:
+                    throw new InvalidOperationException("Invalid operation.");
             }
-            else
-            {
-                string expression = resultValue.ToString() + operation + inputValue;
-                result = EvaluateExpression(expression);
-            }
-
             return Math.Round(result, 3);
-        }
-
-        private decimal EvaluateExpression(string expression)
-        {
-            expression = expression.Replace(" ", ""); // Remove any spaces from the expression
-
-            while (expression.Contains("("))
-            {
-                int startIndex = expression.LastIndexOf('(');
-                int endIndex = startIndex + 1;
-                int bracketCount = 1;
-
-                while (bracketCount > 0 && endIndex < expression.Length)
-                {
-                    if (expression[endIndex] == '(')
-                    {
-                        bracketCount++;
-                    }
-                    else if (expression[endIndex] == ')')
-                    {
-                        bracketCount--;
-                    }
-                    endIndex++;
-                }
-
-                string subExpression = expression.Substring(startIndex + 1, endIndex - startIndex - 2);
-                decimal subResult = EvaluateExpression(subExpression);
-
-                expression = expression.Substring(0, startIndex) + subResult.ToString() + expression.Substring(endIndex);
-            }
-
-            return EvaluateSimpleExpression(expression);
-        }
-
-        private decimal EvaluateSimpleExpression(string expression)
-        {
-            char[] operators = { '*', '/', '+', '-' };
-
-            foreach (char op in operators)
-            {
-                int index = expression.IndexOf(op);
-                while (index != -1)
-                {
-                    int leftIndex = index - 1;
-                    while (leftIndex >= 0 && char.IsDigit(expression[leftIndex]))
-                    {
-                        leftIndex--;
-                    }
-                    leftIndex++;
-
-                    int rightIndex = index + 1;
-                    while (rightIndex < expression.Length && char.IsDigit(expression[rightIndex]))
-                    {
-                        rightIndex++;
-                    }
-
-                    decimal leftOperand = decimal.Parse(expression.Substring(leftIndex, index - leftIndex));
-                    decimal rightOperand = decimal.Parse(expression.Substring(index + 1, rightIndex - index - 1));
-
-                    switch (op)
-                    {
-                        case '*':
-                            expression = expression.Substring(0, leftIndex) + (leftOperand * rightOperand).ToString() + expression.Substring(rightIndex);
-                            break;
-                        case '/':
-                            if (rightOperand == 0)
-                            {
-                                throw new DivideByZeroException("Cannot divide by zero.");
-                            }
-                            expression = expression.Substring(0, leftIndex) + (leftOperand / rightOperand).ToString() + expression.Substring(rightIndex);
-                            break;
-                        case '+':
-                            expression = expression.Substring(0, leftIndex) + (leftOperand + rightOperand).ToString() + expression.Substring(rightIndex);
-                            break;
-                        case '-':
-                            expression = expression.Substring(0, leftIndex) + (leftOperand - rightOperand).ToString() + expression.Substring(rightIndex);
-                            break;
-                    }
-
-                    index = expression.IndexOfAny(operators);
-                }
-            }
-
-            return decimal.Parse(expression);
         }
 
         public string ClearEntry(string currentValue)
@@ -118,6 +198,73 @@ namespace CalculatorLogic
         public decimal Clear(decimal resultValue)
         {
             return 0;
+        }
+
+        public string ConvertToPostfix(string expression)
+        {
+            Stack<char> operatorStack = new Stack<char>();
+            StringBuilder postfixExpression = new StringBuilder();
+
+            foreach (char c in expression)
+            {
+                if (char.IsDigit(c) || c == '.')
+                {
+                    postfixExpression.Append(c);
+                }
+                else if (c == '(')
+                {
+                    operatorStack.Push(c);
+                }
+                else if (c == ')')
+                {
+                    while (operatorStack.Count > 0 && operatorStack.Peek() != '(')
+                    {
+                        postfixExpression.Append(operatorStack.Pop());
+                    }
+
+                    if (operatorStack.Count == 0)
+                    {
+                        throw new ArgumentException("Invalid expression: Unmatched parenthesis.");
+                    }
+
+                    // Discard the '('
+                    operatorStack.Pop();
+                }
+                else
+                {
+                    while (operatorStack.Count > 0 && Precedence(operatorStack.Peek()) >= Precedence(c))
+                    {
+                        postfixExpression.Append(operatorStack.Pop());
+                    }
+                    operatorStack.Push(c);
+                }
+            }
+
+            while (operatorStack.Count > 0)
+            {
+                if (operatorStack.Peek() == '(')
+                {
+                    throw new ArgumentException("Invalid expression: Unmatched parenthesis.");
+                }
+                postfixExpression.Append(operatorStack.Pop());
+            }
+
+            return postfixExpression.ToString();
+        }
+
+        private int Precedence(char op)
+        {
+            switch (op)
+            {
+                case '+':
+                case '-':
+                    return 1;
+                case '*':
+                case '/':
+                    return 2;
+                default:
+                    return 0;
+            }
         }
     }
 }
