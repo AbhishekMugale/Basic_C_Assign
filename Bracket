@@ -1,153 +1,102 @@
 using CalculatorLogic;
-using System;
 using System.Collections.Generic;
-using System.Text;
-using System.Windows.Forms;
 
 namespace DesktopCalculator
 {
     public partial class Form1 : Form
     {
         private Calculator calculator = new Calculator();
+        private Stack<decimal> operands = new Stack<decimal>();
+        private Stack<string> operators = new Stack<string>();
 
-        decimal resultValue = 0;
-        string operationPerform = "";
-        bool isOperationPerform = false;
-
-        public Form1()
-        {
-            InitializeComponent();
-        }
+        // ... other code for the form ...
 
         private void EqualsTo_Click(object sender, EventArgs e)
         {
             try
             {
-                textBox_Result.Text = calculator.PerformOperation(resultValue, operationPerform, textBox_Result.Text).ToString("#.###");
-                resultValue = decimal.Parse(textBox_Result.Text);
-                labelCurrentOperation.Text = "";
-                textBox_Result.Focus();
+                while (operators.Count > 0)
+                {
+                    PerformOperation();
+                }
+                textBox_Result.Text = operands.Pop().ToString("#.###");
+                operators.Clear();
             }
             catch (Exception ex)
             {
                 MessageBox.Show("Error: " + ex.Message);
                 textBox_Result.Text = "0";
+                operands.Clear();
+                operators.Clear();
             }
+        }
 
-            labelCurrentOperation.Text = textBox_Result.Text + " " + buttonEquals.Text;
-            resultValue = decimal.Parse(textBox_Result.Text);
-            labelCurrentOperation.Text = "";
-
-            if (operationPerform == "")
+        private void InputNumber_click(object sender, EventArgs e)
+        {
+            Button button = (Button)sender;
+            if ((textBox_Result.Text == "0") || isOperationPerform) // clear when entering a number after an operation
             {
-                resultValue = 0;
+                textBox_Result.Clear();
             }
+            isOperationPerform = false;
+            textBox_Result.Text += button.Text;
+        }
+
+        private void Operation_Clicked(object sender, EventArgs e)
+        {
+            Button button = (Button)sender;
+            if (operators.Count > 0 && HasHigherPrecedence(button.Text, operators.Peek()))
+            {
+                PerformOperation();
+            }
+            operators.Push(button.Text);
             isOperationPerform = true;
         }
 
-        private void InputNumber_Click(object sender, EventArgs e)
+        private void LeftBracket_Click(object sender, EventArgs e)
         {
-            Button button = (Button)sender;
+            operators.Push("(");
+        }
 
-            if ((textBox_Result.Text == "0") || isOperationPerform)
-                textBox_Result.Clear();
-
-            isOperationPerform = false;
-
-            if (button.Text == ".")
+        private void RightBracket_Click(object sender, EventArgs e)
+        {
+            try
             {
-                if (!textBox_Result.Text.Contains("."))
+                while (operators.Count > 0 && operators.Peek() != "(")
                 {
-                    textBox_Result.Text += button.Text;
+                    PerformOperation();
                 }
-                else
-                {
-                    MessageBox.Show("Decimal point already exists.");
-                }
+                operators.Pop(); // remove the left bracket
             }
-            else if (button.Text != ".")
+            catch (Exception ex)
             {
-                textBox_Result.Text += button.Text;
-            }
-
-            if (resultValue != 0)
-            {
-                labelCurrentOperation.Text = resultValue + " " + operationPerform + textBox_Result.Text;
-            }
-            else
-            {
-                labelCurrentOperation.Text = operationPerform + textBox_Result.Text;
-            }
-
-            if (textBox_Result.Text.Contains("("))
-            {
-                // Handle parentheses logic
-                try
-                {
-                    string postfixExpression = calculator.ConvertToPostfix(textBox_Result.Text);
-                    labelPostfixExpression.Text = postfixExpression;
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show("Error: " + ex.Message);
-                }
+                MessageBox.Show("Error: Missing left bracket.");
+                operands.Clear();
+                operators.Clear();
+                textBox_Result.Text = "0";
             }
         }
 
-        private void Operation_Click(object sender, EventArgs e)
+        private void PerformOperation()
         {
-            Button button = (Button)sender;
+            if (operators.Count < 2 || operands.Count < 2)
+            {
+                throw new InvalidOperationException("Insufficient operands or operators.");
+            }
 
-            if (resultValue != 0)
-            {
-                buttonEquals.PerformClick();
-                operationPerform = button.Text;
-                labelCurrentOperation.Text = resultValue + " " + operationPerform;
-                isOperationPerform = true;
-            }
-            else
-            {
-                operationPerform = button.Text;
-                if (!string.IsNullOrEmpty(textBox_Result.Text))
-                {
-                    try
-                    {
-                        resultValue = decimal.Parse(textBox_Result.Text);
-                        isOperationPerform = true;
-                        labelCurrentOperation.Text = resultValue + " " + operationPerform;
-                    }
-                    catch (FormatException ex)
-                    {
-                        MessageBox.Show("Input string is not in the correct format.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        textBox_Result.Text = "0";
-                    }
-                }
-            }
+            decimal operand2 = operands.Pop();
+            decimal operand1 = operands.Pop();
+            string operation = operators.Pop();
+
+            operands.Push(calculator.PerformOperation(operand1, operation, operand2.ToString()));
         }
 
-        private void ClearEntry_Click(object sender, EventArgs e)
+        private bool HasHigherPrecedence(string op1, string op2)
         {
-            textBox_Result.Text = calculator.ClearEntry(textBox_Result.Text);
-            isOperationPerform = false;
-            labelCurrentOperation.Text = textBox_Result.Text;
-        }
-
-        private void Clear_Click(object sender, EventArgs e)
-        {
-            resultValue = calculator.Clear(resultValue);
-            textBox_Result.Text = calculator.ClearEntry(textBox_Result.Text);
-            operationPerform = "";
-            isOperationPerform = false;
-            labelCurrentOperation.Text = textBox_Result.Text;
-        }
-
-        private void textBox_Result_Validated(object sender, EventArgs e)
-        {
-            if (!textBox_Result.Text.Contains(" "))
-            {
-                textBox_Result.Clear();
-                resultValue = 0;
-            }
+            // BODMAS precedence
+            int precedence1 = (op1 == "+" || op1 == "-") ? 1 : 2;
+            int precedence2 = (op2 == "+" || op2 == "-") ? 1 : 2;
+            return precedence1 > precedence2 || (precedence1 == precedence2 && op1 == "*"); // multiplication/division associative from left to right
         }
     }
 }
@@ -156,11 +105,10 @@ namespace CalculatorLogic
 {
     public class Calculator
     {
-        public decimal PerformOperation(decimal resultValue, string operation, string inputValue)
+        public decimal PerformOperation(decimal operand1, string operation, string operand2)
         {
             decimal input;
-            decimal result = 0;
-            if (!decimal.TryParse(inputValue, out input))
+            if (!decimal.TryParse(operand2, out input))
             {
                 throw new FormatException("Invalid input.");
             }
@@ -168,102 +116,22 @@ namespace CalculatorLogic
             switch (operation)
             {
                 case "+":
-                    result = resultValue + input;
-                    break;
+                    return operand1 + input;
                 case "-":
-                    result = resultValue - input;
-                    break;
+                    return operand1 - input;
                 case "*":
-                    result = resultValue * input;
-                    break;
+                    return operand1 * input;
                 case "/":
                     if (input != 0)
-                        result = resultValue / input;
+                    {
+                        return operand1 / input;
+                    }
                     else
                     {
                         throw new DivideByZeroException("Cannot divide by zero.");
                     }
-                    break;
                 default:
                     throw new InvalidOperationException("Invalid operation.");
-            }
-            return Math.Round(result, 3);
-        }
-
-        public string ClearEntry(string currentValue)
-        {
-            return "0";
-        }
-
-        public decimal Clear(decimal resultValue)
-        {
-            return 0;
-        }
-
-        public string ConvertToPostfix(string expression)
-        {
-            Stack<char> operatorStack = new Stack<char>();
-            StringBuilder postfixExpression = new StringBuilder();
-
-            foreach (char c in expression)
-            {
-                if (char.IsDigit(c) || c == '.')
-                {
-                    postfixExpression.Append(c);
-                }
-                else if (c == '(')
-                {
-                    operatorStack.Push(c);
-                }
-                else if (c == ')')
-                {
-                    while (operatorStack.Count > 0 && operatorStack.Peek() != '(')
-                    {
-                        postfixExpression.Append(operatorStack.Pop());
-                    }
-
-                    if (operatorStack.Count == 0)
-                    {
-                        throw new ArgumentException("Invalid expression: Unmatched parenthesis.");
-                    }
-
-                    // Discard the '('
-                    operatorStack.Pop();
-                }
-                else
-                {
-                    while (operatorStack.Count > 0 && Precedence(operatorStack.Peek()) >= Precedence(c))
-                    {
-                        postfixExpression.Append(operatorStack.Pop());
-                    }
-                    operatorStack.Push(c);
-                }
-            }
-
-            while (operatorStack.Count > 0)
-            {
-                if (operatorStack.Peek() == '(')
-                {
-                    throw new ArgumentException("Invalid expression: Unmatched parenthesis.");
-                }
-                postfixExpression.Append(operatorStack.Pop());
-            }
-
-            return postfixExpression.ToString();
-        }
-
-        private int Precedence(char op)
-        {
-            switch (op)
-            {
-                case '+':
-                case '-':
-                    return 1;
-                case '*':
-                case '/':
-                    return 2;
-                default:
-                    return 0;
             }
         }
     }
