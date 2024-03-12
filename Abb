@@ -1,0 +1,165 @@
+using CalculatorLogic;
+using System;
+using System.Collections.Generic;
+using System.Windows.Forms;
+
+namespace DesktopCalculator
+{
+    public partial class Form1 : Form
+    {
+        private Calculator calculator = new Calculator();
+        private Stack<decimal> operands = new Stack<decimal>();
+        private Stack<string> operators = new Stack<string>();
+        private decimal resultValue = 0;
+        private string operationPerform = "";
+        private bool isOperationPerform = false;
+
+        public Form1()
+        {
+            InitializeComponent();
+        }
+
+        private void EqualsTo_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                while (operators.Count > 0)
+                {
+                    PerformOperation();
+                }
+                textBox_Result.Text = operands.Pop().ToString("#.###");
+                operators.Clear();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error: " + ex.Message);
+                textBox_Result.Text = "0";
+                operands.Clear();
+                operators.Clear();
+            }
+        }
+
+        private void InputNumber_click(object sender, EventArgs e)
+        {
+            Button button = (Button)sender;
+
+            if (textBox_Result.Text == "0" || isOperationPerform)
+                textBox_Result.Clear();
+
+            isOperationPerform = false;
+
+            if (button.Text == "." && !textBox_Result.Text.Contains("."))
+                textBox_Result.Text += button.Text;
+            else if (button.Text != ".")
+                textBox_Result.Text += button.Text;
+
+            if (resultValue != 0)
+                labelCurrentOperation.Text = resultValue + " " + operationPerform + textBox_Result.Text;
+            else
+                labelCurrentOperation.Text = operationPerform + textBox_Result.Text;
+        }
+
+        private void Operation_Clicked(object sender, EventArgs e)
+        {
+            Button button = (Button)sender;
+
+            if (resultValue != 0)
+            {
+                equalsButton.PerformClick();
+                operationPerform = button.Text;
+                labelCurrentOperation.Text = resultValue + " " + operationPerform;
+                isOperationPerform = true;
+            }
+            else
+            {
+                operationPerform = button.Text;
+                if (!string.IsNullOrEmpty(textBox_Result.Text))
+                {
+                    try
+                    {
+                        resultValue = decimal.Parse(textBox_Result.Text);
+                        isOperationPerform = true;
+                        labelCurrentOperation.Text = resultValue + " " + operationPerform;
+                    }
+                    catch (FormatException ex)
+                    {
+                        MessageBox.Show("Input string is not in the correct format.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        textBox_Result.Text = "0";
+                    }
+                }
+            }
+
+            while (operators.Count > 0 && HasHigherPrecedence(button.Text, operators.Peek()))
+                PerformOperation();
+
+            operators.Push(button.Text);
+            isOperationPerform = true;
+        }
+
+        private void ClearEntry_Click(object sender, EventArgs e)
+        {
+            if (textBox_Result.Text.Length > 0)
+                textBox_Result.Text = textBox_Result.Text.Substring(0, textBox_Result.Text.Length - 1);
+        }
+
+        private void Clear_Click(object sender, EventArgs e)
+        {
+            resultValue = 0;
+            textBox_Result.Text = "0";
+            operationPerform = "";
+            isOperationPerform = false;
+            labelCurrentOperation.Text = "";
+            operands.Clear();
+            operators.Clear();
+        }
+
+        private void PerformOperation()
+        {
+            if (operators.Count < 1 || operands.Count < 2)
+                throw new InvalidOperationException("Insufficient operands or operators.");
+
+            decimal operand2 = operands.Pop();
+            decimal operand1 = operands.Pop();
+            string operation = operators.Pop();
+
+            operands.Push(calculator.PerformOperation(operand1, operation, operand2.ToString()));
+        }
+
+        private bool HasHigherPrecedence(string op1, string op2)
+        {
+            int precedence1 = (op1 == "+" || op1 == "-") ? 1 : 2;
+            int precedence2 = (op2 == "+" || op2 == "-") ? 1 : 2;
+            return precedence1 > precedence2 || (precedence1 == precedence2 && op1 == "*");
+        }
+    }
+}
+
+namespace CalculatorLogic
+{
+    public class Calculator
+    {
+        public decimal PerformOperation(decimal operand1, string operation, string operand2)
+        {
+            decimal input;
+            if (!decimal.TryParse(operand2, out input))
+                throw new FormatException("Invalid input.");
+
+            switch (operation)
+            {
+                case "+":
+                    return operand1 + input;
+                case "-":
+                    return operand1 - input;
+                case "*":
+                    return operand1 * input;
+                case "/":
+                    if (input != 0)
+                        return operand1 / input;
+                    else
+                        throw new DivideByZeroException("Cannot divide by zero.");
+                default:
+                    throw new InvalidOperationException("Invalid operation.");
+            }
+        }
+    }
+}
