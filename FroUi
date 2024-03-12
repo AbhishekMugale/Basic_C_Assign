@@ -1,6 +1,6 @@
+// Form1.cs
 using CalculatorLogic;
 using System;
-using System.Collections.Generic;
 using System.Text;
 using System.Windows.Forms;
 
@@ -9,12 +9,8 @@ namespace DesktopCalculator
     public partial class Form1 : Form
     {
         private Calculator calculator = new Calculator();
+        private StringBuilder expressionBuilder = new StringBuilder();
         private Stack<string> expressionStack = new Stack<string>();
-        private Stack<string> operators = new Stack<string>();
-
-        decimal resultValue = 0;
-        string operationPerform = "";
-        bool isOperationPerform = false;
 
         public Form1()
         {
@@ -25,38 +21,23 @@ namespace DesktopCalculator
         {
             try
             {
-                while (operators.Count > 0)
-                {
-                    PerformOperation();
-                }
+                string expression = expressionBuilder.ToString();
+                decimal result = calculator.EvaluateExpression(expression);
 
-                // Build the complete expression from the expression stack
-                StringBuilder expressionBuilder = new StringBuilder();
-                foreach (var item in expressionStack)
-                {
-                    expressionBuilder.Append(item);
-                }
+                // Display the complete expression and result
+                labelCurrentOperation.Text = expression + " = " + result;
+                textBox_Result.Text = result.ToString();
 
-                // Display the complete expression
-                labelCurrentOperation.Text = expressionBuilder.ToString();
-
-                if (expressionStack.Count == 1)
-                {
-                    textBox_Result.Text = expressionStack.Pop();
-                }
-                else
-                {
-                    throw new InvalidOperationException("Invalid expression");
-                }
-
-                operators.Clear();
+                // Clear the expression builder and stack
+                expressionBuilder.Clear();
+                expressionStack.Clear();
             }
             catch (Exception ex)
             {
                 MessageBox.Show("Error: " + ex.Message);
                 textBox_Result.Text = "0";
+                expressionBuilder.Clear();
                 expressionStack.Clear();
-                operators.Clear();
             }
         }
 
@@ -64,20 +45,15 @@ namespace DesktopCalculator
         {
             Button button = (Button)sender;
 
-            if ((textBox_Result.Text == "0") || isOperationPerform)
-                textBox_Result.Clear();
-
-            isOperationPerform = false;
-
-            if (button.Text == "." && !textBox_Result.Text.Contains("."))
+            // Append the button's text to the expression builder if it's a valid number or decimal point
+            if (IsValidNumber(button.Text))
             {
-                textBox_Result.Text += button.Text;
-                expressionStack.Push(button.Text);
+                expressionBuilder.Append(button.Text);
+                labelCurrentOperation.Text += button.Text;
             }
-            else if (button.Text != ".")
+            else
             {
-                textBox_Result.Text += button.Text;
-                expressionStack.Push(button.Text);
+                MessageBox.Show("Invalid input: " + button.Text);
             }
         }
 
@@ -85,107 +61,48 @@ namespace DesktopCalculator
         {
             Button button = (Button)sender;
 
-            if (resultValue != 0)
-            {
-                equalsButton.PerformClick();
-                operationPerform = button.Text;
-                expressionStack.Push(" " + operationPerform + " ");
-                isOperationPerform = true;
-            }
-            else
-            {
-                operationPerform = button.Text;
-                if (!string.IsNullOrEmpty(textBox_Result.Text))
-                {
-                    try
-                    {
-                        resultValue = decimal.Parse(textBox_Result.Text);
-                        expressionStack.Push(textBox_Result.Text);
-                        expressionStack.Push(" " + operationPerform + " ");
-                        isOperationPerform = true;
-                    }
-                    catch (FormatException ex)
-                    {
-                        MessageBox.Show("Input string is not in the correct format.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        textBox_Result.Text = "0";
-                    }
-                }
-            }
-
-            if (operators.Count > 0 && HasHigherPrecedence(button.Text, operators.Peek()))
-            {
-                PerformOperation();
-            }
-            operators.Push(button.Text);
-            isOperationPerform = true;
+            // Append the button's text to the expression builder
+            expressionBuilder.Append(" " + button.Text + " ");
+            expressionStack.Push(button.Text);
+            labelCurrentOperation.Text += " " + button.Text + " ";
         }
 
         private void ClearEntry_Click(object sender, EventArgs e)
         {
-            if (textBox_Result.Text.Length > 0)
+            if (expressionBuilder.Length > 0)
             {
-                textBox_Result.Text = textBox_Result.Text.Substring(0, textBox_Result.Text.Length - 1);
-                expressionStack.Pop();
+                string lastChar = expressionStack.Pop();
+                expressionBuilder.Remove(expressionBuilder.Length - lastChar.Length, lastChar.Length);
+                labelCurrentOperation.Text = expressionBuilder.ToString();
             }
         }
 
         private void Clear_Click(object sender, EventArgs e)
         {
-            resultValue = calculator.Clear(resultValue);
-            textBox_Result.Text = calculator.ClearEntry(textBox_Result.Text);
-            operationPerform = "";
-            isOperationPerform = false;
-            labelCurrentOperation.Text = textBox_Result.Text;
+            textBox_Result.Text = "0";
+            expressionBuilder.Clear();
+            expressionStack.Clear();
+            labelCurrentOperation.Text = "";
         }
 
         private void LeftBracket_Click(object sender, EventArgs e)
         {
-            operators.Push("(");
+            expressionBuilder.Append("(");
             expressionStack.Push("(");
+            labelCurrentOperation.Text += "(";
         }
 
         private void RightBracket_Click(object sender, EventArgs e)
         {
-            try
-            {
-                while (operators.Count > 0 && operators.Peek() != "(")
-                {
-                    PerformOperation();
-                }
-                operators.Pop(); // remove the left bracket
-                expressionStack.Push(")");
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Error: Missing left bracket.");
-                expressionStack.Clear();
-                operators.Clear();
-                textBox_Result.Text = "0";
-            }
+            expressionBuilder.Append(")");
+            expressionStack.Push(")");
+            labelCurrentOperation.Text += ")";
         }
 
-        private void PerformOperation()
+        private bool IsValidNumber(string input)
         {
-            if (expressionStack.Count < 3 || operators.Count == 0)
-            {
-                throw new InvalidOperationException("Insufficient operands or stack empty");
-            }
-
-            string operand2 = expressionStack.Pop();
-            string operand1 = expressionStack.Pop();
-            string operation = operators.Pop();
-
-            string expression = operand1 + operation + operand2;
-            decimal result = calculator.EvaluateExpression(expression);
-            expressionStack.Push(result.ToString());
-        }
-
-        private bool HasHigherPrecedence(string op1, string op2)
-        {
-            // BODMAS precedence
-            int precedence1 = (op1 == "+" || op1 == "-") ? 1 : 2;
-            int precedence2 = (op2 == "+" || op2 == "-") ? 1 : 2;
-            return precedence1 > precedence2 || (precedence1 == precedence2 && op1 == "*");
+            // Check if input is a valid number or decimal point
+            return decimal.TryParse(input, out decimal _) || input == ".";
         }
     }
 }
