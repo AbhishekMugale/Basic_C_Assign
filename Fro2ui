@@ -1,0 +1,87 @@
+using CalculatorLogic;
+using System;
+using System.Text;
+using System.Windows.Forms;
+
+namespace DesktopCalculator
+{
+    public partial class Form1 : Form
+    {
+        private Calculator calculator = new Calculator();
+        private StringBuilder expressionBuilder = new StringBuilder();
+
+        public Form1()
+        {
+            InitializeComponent();
+        }
+
+        // Event handler for equals button click
+        private void EqualsTo_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                string expression = expressionBuilder.ToString();
+                decimal result = calculator.EvaluateExpression(expression);
+
+                // Display the complete expression and result
+                labelCurrentOperation.Text = expression + " = " + result;
+                textBox_Result.Text = result.ToString();
+
+                expressionBuilder.Clear();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error: " + ex.Message);
+                textBox_Result.Text = "0";
+                expressionBuilder.Clear();
+            }
+        }
+
+        // Event handler for numeric or operator button click
+        private void InputButton_Click(object sender, EventArgs e)
+        {
+            Button button = (Button)sender;
+            string input = button.Text;
+
+            if (IsValidInput(input))
+            {
+                expressionBuilder.Append(input);
+                labelCurrentOperation.Text += input;
+            }
+            else
+            {
+                MessageBox.Show("Invalid input: " + input);
+            }
+        }
+
+        // Event handler for clear entry button click
+        private void ClearEntry_Click(object sender, EventArgs e)
+        {
+            if (expressionBuilder.Length > 0)
+            {
+                expressionBuilder.Remove(expressionBuilder.Length - 1, 1);
+                labelCurrentOperation.Text = expressionBuilder.ToString();
+            }
+        }
+
+        // Event handler for clear button click
+        private void Clear_Click(object sender, EventArgs e)
+        {
+            textBox_Result.Text = "0";
+            expressionBuilder.Clear();
+            labelCurrentOperation.Text = "";
+        }
+
+        // Method to check if input is a valid number, operator, or decimal point
+        private bool IsValidInput(string input)
+        {
+            return decimal.TryParse(input, out decimal _) || IsOperator(input) || input == ".";
+        }
+
+        // Method to check if a character is an operator
+        private bool IsOperator(string input)
+        {
+            return input == "+" || input == "-" || input == "*" || input == "/";
+        }
+    }
+}
