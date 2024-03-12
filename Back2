@@ -1,3 +1,4 @@
+// Calculator.cs
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -6,37 +7,15 @@ namespace CalculatorLogic
 {
     public class Calculator
     {
-        // Method to evaluate the input expression and return the result
         public decimal EvaluateExpression(string expression)
         {
             try
             {
-                expression = expression.Replace(" ", ""); // Remove whitespace
+                // Convert infix expression to postfix using Shunting Yard algorithm
+                string postfixExpression = ConvertToPostfix(expression);
 
-                Stack<string> operators = new Stack<string>(); // Operator stack
-                Stack<decimal> operands = new Stack<decimal>(); // Operand stack
-
-                ShuntingYard shuntingYard = new ShuntingYard(); // Use Shunting Yard algorithm
-                List<string> postfix = shuntingYard.ConvertToPostfix(expression);
-
-                foreach (string token in postfix)
-                {
-                    if (decimal.TryParse(token, out decimal value))
-                    {
-                        operands.Push(value);
-                    }
-                    else // Perform operation
-                    {
-                        char operation = token[0];
-                        decimal operand2 = operands.Pop();
-                        decimal operand1 = operands.Pop();
-
-                        decimal result = PerformOperation(operation, operand1, operand2);
-                        operands.Push(result);
-                    }
-                }
-
-                return operands.Pop();
+                // Evaluate postfix expression
+                return EvaluatePostfix(postfixExpression);
             }
             catch (Exception ex)
             {
@@ -44,94 +23,117 @@ namespace CalculatorLogic
             }
         }
 
-        // Method to perform arithmetic operations
-        private decimal PerformOperation(char operation, decimal a, decimal b)
+        private string ConvertToPostfix(string expression)
         {
-            switch (operation)
+            Stack<char> operatorStack = new Stack<char>();
+            StringBuilder postfixBuilder = new StringBuilder();
+
+            foreach (char token in expression)
             {
-                case '+':
-                    return a + b;
-                case '-':
-                    return a - b;
-                case '*':
-                    return a * b;
-                case '/':
-                    if (b == 0)
+                if (char.IsDigit(token) || token == '.')
+                {
+                    postfixBuilder.Append(token); // Append operands directly to the postfix expression
+                }
+                else if (IsOperator(token))
+                {
+                    // Pop operators with higher or equal precedence from the stack and append to the postfix expression
+                    while (operatorStack.Count > 0 && GetPrecedence(token) <= GetPrecedence(operatorStack.Peek()))
                     {
-                        throw new DivideByZeroException("Cannot divide by zero.");
+                        postfixBuilder.Append(operatorStack.Pop());
                     }
-                    return a / b;
-                default:
-                    throw new FormatException("Invalid operator.");
+                    operatorStack.Push(token);
+                }
+                else if (token == '(')
+                {
+                    operatorStack.Push(token); // Push left parenthesis to the stack
+                }
+                else if (token == ')')
+                {
+                    // Pop operators from the stack and append to the postfix expression until matching left parenthesis is found
+                    while (operatorStack.Count > 0 && operatorStack.Peek() != '(')
+                    {
+                        postfixBuilder.Append(operatorStack.Pop());
+                    }
+                    operatorStack.Pop(); // Discard the left parenthesis
+                }
             }
+
+            // Pop remaining operators from the stack and append to the postfix expression
+            while (operatorStack.Count > 0)
+            {
+                postfixBuilder.Append(operatorStack.Pop());
+            }
+
+            return postfixBuilder.ToString();
         }
 
-        // Inner class for Shunting Yard algorithm implementation
-        private class ShuntingYard
+        private decimal EvaluatePostfix(string postfixExpression)
         {
-            private readonly Dictionary<char, int> precedence = new Dictionary<char, int>()
-            {
-                { '+', 1 },
-                { '-', 1 },
-                { '*', 2 },
-                { '/', 2 }
-            };
+            Stack<decimal> operandStack = new Stack<decimal>();
 
-            public List<string> ConvertToPostfix(string expression)
+            foreach (char token in postfixExpression)
             {
-                List<string> postfix = new List<string>();
-                Stack<char> operatorStack = new Stack<char>();
-
-                foreach (char ch in expression)
+                if (char.IsDigit(token) || token == '.')
                 {
-                    if (char.IsDigit(ch) || ch == '.')
+                    // Convert operand token to decimal and push onto the operand stack
+                    operandStack.Push(decimal.Parse(token.ToString()));
+                }
+                else if (IsOperator(token))
+                {
+                    // Pop operands from the stack and perform the operation
+                    decimal operand2 = operandStack.Pop();
+                    decimal operand1 = operandStack.Pop();
+
+                    switch (token)
                     {
-                        StringBuilder operand = new StringBuilder();
-                        while (char.IsDigit(ch) || ch == '.')
-                        {
-                            operand.Append(ch);
-                            ch = expression[++expression.IndexOf(ch, expression.IndexOf(ch) + 1)]; // Move to next char
-                        }
-                        postfix.Add(operand.ToString());
-                    }
-                    else if (ch == '(')
-                    {
-                        operatorStack.Push(ch);
-                    }
-                    else if (ch == ')')
-                    {
-                        while (operatorStack.Peek() != '(')
-                        {
-                            postfix.Add(operatorStack.Pop().ToString());
-                        }
-                        operatorStack.Pop(); // Remove '('
-                    }
-                    else if (IsOperator(ch))
-                    {
-                        while (operatorStack.Count > 0 && HasHigherPrecedence(operatorStack.Peek(), ch))
-                        {
-                            postfix.Add(operatorStack.Pop().ToString());
-                        }
-                        operatorStack.Push(ch);
+                        case '+':
+                            operandStack.Push(operand1 + operand2);
+                            break;
+                        case '-':
+                            operandStack.Push(operand1 - operand2);
+                            break;
+                        case '*':
+                            operandStack.Push(operand1 * operand2);
+                            break;
+                        case '/':
+                            if (operand2 == 0)
+                            {
+                                throw new DivideByZeroException("Cannot divide by zero.");
+                            }
+                            operandStack.Push(operand1 / operand2);
+                            break;
+                        default:
+                            throw new FormatException("Invalid operator.");
                     }
                 }
-
-                while (operatorStack.Count > 0)
-                {
-                    postfix.Add(operatorStack.Pop().ToString());
-                }
-
-                return postfix;
             }
 
-            private bool IsOperator(char ch)
+            // Result should be the only value left on the operand stack
+            if (operandStack.Count != 1)
             {
-                return precedence.ContainsKey(ch);
+                throw new FormatException("Invalid postfix expression.");
             }
 
-            private bool HasHigherPrecedence(char op1, char op2)
+            return operandStack.Pop();
+        }
+
+        private bool IsOperator(char c)
+        {
+            return c == '+' || c == '-' || c == '*' || c == '/';
+        }
+
+        private int GetPrecedence(char op)
+        {
+            switch (op)
             {
-                return precedence[op1] >= precedence[op2];
+                case '+':
+                case '-':
+                    return 1;
+                case '*':
+                case '/':
+                    return 2;
+                default:
+                    throw new FormatException("Invalid operator.");
             }
         }
     }
