@@ -1,0 +1,138 @@
+using System;
+using System.Collections.Generic;
+using System.Text;
+
+namespace CalculatorLogic
+{
+    public class Calculator
+    {
+        // Method to evaluate the input expression and return the result
+        public decimal EvaluateExpression(string expression)
+        {
+            try
+            {
+                expression = expression.Replace(" ", ""); // Remove whitespace
+
+                Stack<string> operators = new Stack<string>(); // Operator stack
+                Stack<decimal> operands = new Stack<decimal>(); // Operand stack
+
+                ShuntingYard shuntingYard = new ShuntingYard(); // Use Shunting Yard algorithm
+                List<string> postfix = shuntingYard.ConvertToPostfix(expression);
+
+                foreach (string token in postfix)
+                {
+                    if (decimal.TryParse(token, out decimal value))
+                    {
+                        operands.Push(value);
+                    }
+                    else // Perform operation
+                    {
+                        char operation = token[0];
+                        decimal operand2 = operands.Pop();
+                        decimal operand1 = operands.Pop();
+
+                        decimal result = PerformOperation(operation, operand1, operand2);
+                        operands.Push(result);
+                    }
+                }
+
+                return operands.Pop();
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("Error evaluating expression: " + ex.Message);
+            }
+        }
+
+        // Method to perform arithmetic operations
+        private decimal PerformOperation(char operation, decimal a, decimal b)
+        {
+            switch (operation)
+            {
+                case '+':
+                    return a + b;
+                case '-':
+                    return a - b;
+                case '*':
+                    return a * b;
+                case '/':
+                    if (b == 0)
+                    {
+                        throw new DivideByZeroException("Cannot divide by zero.");
+                    }
+                    return a / b;
+                default:
+                    throw new FormatException("Invalid operator.");
+            }
+        }
+
+        // Inner class for Shunting Yard algorithm implementation
+        private class ShuntingYard
+        {
+            private readonly Dictionary<char, int> precedence = new Dictionary<char, int>()
+            {
+                { '+', 1 },
+                { '-', 1 },
+                { '*', 2 },
+                { '/', 2 }
+            };
+
+            public List<string> ConvertToPostfix(string expression)
+            {
+                List<string> postfix = new List<string>();
+                Stack<char> operatorStack = new Stack<char>();
+
+                foreach (char ch in expression)
+                {
+                    if (char.IsDigit(ch) || ch == '.')
+                    {
+                        StringBuilder operand = new StringBuilder();
+                        while (char.IsDigit(ch) || ch == '.')
+                        {
+                            operand.Append(ch);
+                            ch = expression[++expression.IndexOf(ch, expression.IndexOf(ch) + 1)]; // Move to next char
+                        }
+                        postfix.Add(operand.ToString());
+                    }
+                    else if (ch == '(')
+                    {
+                        operatorStack.Push(ch);
+                    }
+                    else if (ch == ')')
+                    {
+                        while (operatorStack.Peek() != '(')
+                        {
+                            postfix.Add(operatorStack.Pop().ToString());
+                        }
+                        operatorStack.Pop(); // Remove '('
+                    }
+                    else if (IsOperator(ch))
+                    {
+                        while (operatorStack.Count > 0 && HasHigherPrecedence(operatorStack.Peek(), ch))
+                        {
+                            postfix.Add(operatorStack.Pop().ToString());
+                        }
+                        operatorStack.Push(ch);
+                    }
+                }
+
+                while (operatorStack.Count > 0)
+                {
+                    postfix.Add(operatorStack.Pop().ToString());
+                }
+
+                return postfix;
+            }
+
+            private bool IsOperator(char ch)
+            {
+                return precedence.ContainsKey(ch);
+            }
+
+            private bool HasHigherPrecedence(char op1, char op2)
+            {
+                return precedence[op1] >= precedence[op2];
+            }
+        }
+    }
+}
