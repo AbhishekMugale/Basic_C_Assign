@@ -1,0 +1,124 @@
+using System;
+
+namespace CalculatorLogic
+{
+    public class Calculator
+    {
+        public decimal EvaluateExpression(string expression)
+        {
+            try
+            {
+                expression = expression.Replace(" ", ""); // Remove whitespace from the expression
+                return Evaluate(expression);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("Error evaluating expression: " + ex.Message);
+            }
+        }
+
+        private decimal Evaluate(string expression)
+        {
+            if (decimal.TryParse(expression, out decimal number))
+            {
+                return number; // Base case: If the expression is a single number, return its value
+            }
+
+            int lowestPrecedenceIndex = FindLowestPrecedenceOperator(expression);
+
+            if (lowestPrecedenceIndex == -1)
+            {
+                if (expression[0] == '(' && expression[expression.Length - 1] == ')')
+                {
+                    return Evaluate(expression.Substring(1, expression.Length - 2)); // Evaluate expression inside parentheses
+                }
+                else
+                {
+                    throw new FormatException("Invalid expression format.");
+                }
+            }
+
+            string leftPart = expression.Substring(0, lowestPrecedenceIndex);
+            string rightPart = expression.Substring(lowestPrecedenceIndex + 1);
+
+            decimal leftValue = Evaluate(leftPart);
+            decimal rightValue = Evaluate(rightPart);
+
+            return PerformOperation(leftValue, expression[lowestPrecedenceIndex], rightValue);
+        }
+
+        private int FindLowestPrecedenceOperator(string expression)
+        {
+            int lowestPrecedence = int.MaxValue;
+            int lowestPrecedenceIndex = -1;
+            int parenthesesCount = 0;
+
+            for (int i = 0; i < expression.Length; i++)
+            {
+                char currentChar = expression[i];
+
+                if (currentChar == '(')
+                {
+                    parenthesesCount++;
+                }
+                else if (currentChar == ')')
+                {
+                    parenthesesCount--;
+                }
+                else if (parenthesesCount == 0 && IsOperator(currentChar))
+                {
+                    int precedence = GetPrecedence(currentChar);
+
+                    if (precedence <= lowestPrecedence)
+                    {
+                        lowestPrecedence = precedence;
+                        lowestPrecedenceIndex = i;
+                    }
+                }
+            }
+
+            return lowestPrecedenceIndex;
+        }
+
+        private decimal PerformOperation(decimal operand1, char operation, decimal operand2)
+        {
+            switch (operation)
+            {
+                case '+':
+                    return operand1 + operand2;
+                case '-':
+                    return operand1 - operand2;
+                case '*':
+                    return operand1 * operand2;
+                case '/':
+                    if (operand2 == 0)
+                    {
+                        throw new DivideByZeroException("Cannot divide by zero.");
+                    }
+                    return operand1 / operand2;
+                default:
+                    throw new FormatException("Invalid operator.");
+            }
+        }
+
+        private bool IsOperator(char c)
+        {
+            return c == '+' || c == '-' || c == '*' || c == '/';
+        }
+
+        private int GetPrecedence(char op)
+        {
+            switch (op)
+            {
+                case '+':
+                case '-':
+                    return 1;
+                case '*':
+                case '/':
+                    return 2;
+                default:
+                    throw new ArgumentException("Invalid operator.");
+            }
+        }
+    }
+}
