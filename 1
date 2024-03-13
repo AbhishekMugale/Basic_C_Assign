@@ -1,3 +1,170 @@
+// Calculator.cs
+using System;
+using System.Collections.Generic;
+
+namespace CalculatorLogic
+{
+    public class Calculator
+    {
+        public decimal EvaluateExpression(string expression)
+        {
+            try
+            {
+                expression = expression.Replace(" ", ""); // Remove whitespace from the expression
+                return Evaluate(expression);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("Error evaluating expression: " + ex.Message);
+            }
+        }
+
+        private decimal Evaluate(string expression)
+        {
+            Stack<decimal> numbers = new Stack<decimal>();
+            Stack<char> operators = new Stack<char>();
+
+            int i = 0;
+            while (i < expression.Length)
+            {
+                if (expression[i] == '(')
+                {
+                    operators.Push(expression[i]);
+                    i++;
+                }
+                else if (Char.IsDigit(expression[i]) || expression[i] == '-')
+                {
+                    int j = i;
+                    while (j < expression.Length && (Char.IsDigit(expression[j]) || expression[j] == '.'))
+                    {
+                        j++;
+                    }
+
+                    decimal number = Decimal.Parse(expression.Substring(i, j - i));
+                    numbers.Push(number);
+                    i = j;
+                }
+                else if (expression[i] == ')')
+                {
+                    while (operators.Count > 0 && operators.Peek() != '(')
+                    {
+                        ProcessOperator(numbers, operators.Pop());
+                    }
+
+                    operators.Pop(); // Remove the '('
+                    i++;
+                }
+                else if (IsOperator(expression[i]))
+                {
+                    while (operators.Count > 0 && HasPrecedence(expression[i], operators.Peek()))
+                    {
+                        ProcessOperator(numbers, operators.Pop());
+                    }
+
+                    operators.Push(expression[i]);
+                    i++;
+                }
+                else
+                {
+                    throw new FormatException("Invalid character in expression.");
+                }
+            }
+
+            while (operators.Count > 0)
+            {
+                ProcessOperator(numbers, operators.Pop());
+            }
+
+            return numbers.Pop();
+        }
+
+        private bool HasPrecedence(char op1, char op2)
+        {
+            if (op2 == '(' || op1 == ')')
+            {
+                return false;
+            }
+            if ((op1 == '*' || op1 == '/') && (op2 == '+' || op2 == '-'))
+            {
+                return false;
+            }
+            return true;
+        }
+
+        private void ProcessOperator(Stack<decimal> numbers, char op)
+        {
+            decimal num2 = numbers.Pop();
+            decimal num1 = numbers.Pop();
+            decimal result = PerformOperation(num1, op, num2);
+            numbers.Push(result);
+        }
+
+        private decimal PerformOperation(decimal num1, char op, decimal num2)
+        {
+            switch (op)
+            {
+                case '+':
+                    return num1 + num2;
+                case '-':
+                    return num1 - num2;
+                case '*':
+                    return num1 * num2;
+                case '/':
+                    if (num2 == 0)
+                    {
+                        throw new DivideByZeroException("Cannot divide by zero.");
+                    }
+                    return num1 / num2;
+                default:
+                    throw new FormatException("Invalid operator.");
+            }
+        }
+
+        private bool IsOperator(char c)
+        {
+            return c == '+' || c == '-' || c == '*' || c == '/';
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 private void Operation_Clicked(object sender, EventArgs e)
 {
