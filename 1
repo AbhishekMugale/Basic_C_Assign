@@ -1,3 +1,49 @@
+
+private void Operation_Clicked(object sender, EventArgs e)
+{
+    Button button = (Button)sender;
+
+    // Check if the expression builder ends with a number followed by an operator
+    if (expressionBuilder.Length > 0 && Char.IsDigit(expressionBuilder[expressionBuilder.Length - 1]))
+    {
+        // Remove the last operator from the expression builder
+        while (expressionBuilder.Length > 0 && IsOperator(expressionBuilder[expressionBuilder.Length - 1]))
+        {
+            expressionBuilder.Remove(expressionBuilder.Length - 1, 1);
+            labelCurrentOperation.Text = labelCurrentOperation.Text.Substring(0, labelCurrentOperation.Text.Length - 1);
+        }
+
+        // Append the latest operator to the expression builder
+        expressionBuilder.Append(" " + button.Text + " ");
+        labelCurrentOperation.Text += " " + button.Text + " ";
+    }
+    else if (expressionBuilder.Length > 0 && expressionBuilder[expressionBuilder.Length - 1] == ' ')
+    {
+        // Replace the last operator in the expression builder with the latest operator
+        expressionBuilder.Remove(expressionBuilder.Length - 3, 2);
+        expressionBuilder.Append(button.Text + " ");
+        labelCurrentOperation.Text = labelCurrentOperation.Text.Substring(0, labelCurrentOperation.Text.Length - 2) + button.Text + " ";
+    }
+    else
+    {
+        // Append the latest operator to the expression builder
+        expressionBuilder.Append(button.Text + " ");
+        labelCurrentOperation.Text += button.Text + " ";
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 // Calculator.cs
 using System;
 using System.Collections.Generic;
