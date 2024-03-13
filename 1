@@ -1,0 +1,117 @@
+// Calculator.cs
+using System;
+using System.Collections.Generic;
+using System.Text;
+
+namespace CalculatorLogic
+{
+    public class Calculator
+    {
+        public decimal EvaluateExpression(string expression)
+        {
+            try
+            {
+                return Evaluate(expression);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("Error evaluating expression: " + ex.Message);
+            }
+        }
+
+        private decimal Evaluate(string expression)
+        {
+            Stack<decimal> operandStack = new Stack<decimal>();
+            Stack<char> operatorStack = new Stack<char>();
+
+            foreach (char token in expression)
+            {
+                if (char.IsDigit(token))
+                {
+                    operandStack.Push(decimal.Parse(token.ToString()));
+                }
+                else if (IsOperator(token))
+                {
+                    while (operatorStack.Count > 0 && Precedence(operatorStack.Peek()) >= Precedence(token))
+                    {
+                        PerformOperation(operandStack, operatorStack);
+                    }
+                    operatorStack.Push(token);
+                }
+                else if (token == '(')
+                {
+                    operatorStack.Push(token);
+                }
+                else if (token == ')')
+                {
+                    while (operatorStack.Peek() != '(')
+                    {
+                        PerformOperation(operandStack, operatorStack);
+                    }
+                    operatorStack.Pop(); // Discard the '('
+                }
+            }
+
+            while (operatorStack.Count > 0)
+            {
+                PerformOperation(operandStack, operatorStack);
+            }
+
+            if (operandStack.Count != 1 || operatorStack.Count != 0)
+            {
+                throw new FormatException("Invalid expression format.");
+            }
+
+            return operandStack.Pop();
+        }
+
+        private void PerformOperation(Stack<decimal> operandStack, Stack<char> operatorStack)
+        {
+            char op = operatorStack.Pop();
+            decimal operand2 = operandStack.Pop();
+            decimal operand1 = operandStack.Pop();
+
+            switch (op)
+            {
+                case '+':
+                    operandStack.Push(operand1 + operand2);
+                    break;
+                case '-':
+                    operandStack.Push(operand1 - operand2);
+                    break;
+                case '*':
+                    operandStack.Push(operand1 * operand2);
+                    break;
+                case '/':
+                    if (operand2 == 0)
+                    {
+                        throw new DivideByZeroException("Cannot divide by zero.");
+                    }
+                    operandStack.Push(operand1 / operand2);
+                    break;
+                default:
+                    throw new FormatException("Invalid operator.");
+            }
+        }
+
+        private bool IsOperator(char c)
+        {
+            return c == '+' || c == '-' || c == '*' || c == '/';
+        }
+
+        private int Precedence(char op)
+        {
+            switch (op)
+            {
+                case '+':
+                case '-':
+                    return 1;
+                case '*':
+                case '/':
+                    return 2;
+                default:
+                    throw new FormatException("Invalid operator.");
+            }
+        }
+    }
+}
