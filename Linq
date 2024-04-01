@@ -1,0 +1,162 @@
+public class Person
+{
+    public string Name { get; set; }
+    public int Age { get; set; }
+}
+
+public class Product
+{
+    public string Name { get; set; }
+    public decimal Price { get; set; }
+}
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+class Program
+{
+    static void Main(string[] args)
+    {
+        List<Person> people = new List<Person>
+        {
+            new Person { Name = "Alice", Age = 25 },
+            new Person { Name = "Bob", Age = 30 },
+            new Person { Name = "Charlie", Age = 20 }
+        };
+
+        List<Product> products = new List<Product>
+        {
+            new Product { Name = "Laptop", Price = 1000 },
+            new Product { Name = "Phone", Price = 500 },
+            new Product { Name = "Tablet", Price = 300 }
+        };
+
+        // Aggregation
+        decimal totalPrices = products.Sum(p => p.Price);
+        Console.WriteLine($"Total prices of products: {totalPrices}");
+
+        // Conversion
+        List<string> names = people.Select(p => p.Name).ToList();
+        Console.WriteLine("Names of people:");
+        foreach (var name in names)
+        {
+            Console.WriteLine(name);
+        }
+
+        // Element
+        Person firstPerson = people.First();
+        Console.WriteLine($"First person: {firstPerson.Name}");
+
+        // Generation
+        IEnumerable<int> numbers = Enumerable.Range(1, 5);
+        Console.WriteLine("Generated numbers:");
+        foreach (var number in numbers)
+        {
+            Console.WriteLine(number);
+        }
+
+        // Grouping
+        var groupedPeople = people.GroupBy(p => p.Age);
+        Console.WriteLine("Grouped people by age:");
+        foreach (var group in groupedPeople)
+        {
+            Console.WriteLine($"Age group: {group.Key}");
+            foreach (var person in group)
+            {
+                Console.WriteLine($" - {person.Name}");
+            }
+        }
+
+        // Joining
+        var joinedData = people.Join(products,
+            person => person.Name[0],
+            product => product.Name[0],
+            (person, product) => new { PersonName = person.Name, ProductName = product.Name });
+        Console.WriteLine("Joined data:");
+        foreach (var item in joinedData)
+        {
+            Console.WriteLine($"{item.PersonName} - {item.ProductName}");
+        }
+
+        // Ordering
+        var orderedPeople = people.OrderBy(p => p.Age);
+        Console.WriteLine("Ordered people by age:");
+        foreach (var person in orderedPeople)
+        {
+            Console.WriteLine($"{person.Name} - {person.Age}");
+        }
+
+        // Other operations (Distinct, Union, Intersect, Except)
+        List<int> numbers1 = new List<int> { 1, 2, 3, 4, 5 };
+        List<int> numbers2 = new List<int> { 4, 5, 6, 7, 8 };
+
+        var distinctNumbers = numbers1.Distinct();
+        Console.WriteLine("Distinct numbers:");
+        foreach (var number in distinctNumbers)
+        {
+            Console.WriteLine(number);
+        }
+
+        var unionNumbers = numbers1.Union(numbers2);
+        Console.WriteLine("Union of numbers:");
+        foreach (var number in unionNumbers)
+        {
+            Console.WriteLine(number);
+        }
+
+        var intersectNumbers = numbers1.Intersect(numbers2);
+        Console.WriteLine("Intersection of numbers:");
+        foreach (var number in intersectNumbers)
+        {
+            Console.WriteLine(number);
+        }
+
+        var exceptNumbers = numbers1.Except(numbers2);
+        Console.WriteLine("Difference of numbers:");
+        foreach (var number in exceptNumbers)
+        {
+            Console.WriteLine(number);
+        }
+
+        // Partitioning (Take, Skip)
+        var firstTwoPeople = people.Take(2);
+        Console.WriteLine("First two people:");
+        foreach (var person in firstTwoPeople)
+        {
+            Console.WriteLine($"{person.Name} - {person.Age}");
+        }
+
+        var skippedPeople = people.Skip(1);
+        Console.WriteLine("Skipped first person:");
+        foreach (var person in skippedPeople)
+        {
+            Console.WriteLine($"{person.Name} - {person.Age}");
+        }
+
+        // Projection
+        var nameAndAge = people.Select(p => new { Name = p.Name, Age = p.Age + 10 });
+        Console.WriteLine("Projected names and ages:");
+        foreach (var item in nameAndAge)
+        {
+            Console.WriteLine($"{item.Name} - {item.Age}");
+        }
+
+        // Quantifiers (All, Any)
+        bool allAdults = people.All(p => p.Age >= 18);
+        Console.WriteLine($"All people are adults: {allAdults}");
+
+        bool anyAdult = people.Any(p => p.Age >= 18);
+        Console.WriteLine($"Any adult found: {anyAdult}");
+
+        // Restrictions (Where)
+        var adults = people.Where(p => p.Age >= 18);
+        Console.WriteLine("Adults:");
+        foreach (var adult in adults)
+        {
+            Console.WriteLine($"{adult.Name} - {adult.Age}");
+        }
+
+        Console.ReadLine(); // Keep console window open
+    }
+}
